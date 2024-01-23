@@ -1,5 +1,5 @@
 import './App.css';
-import { useState} from 'react';
+import React, { useState, useEffect } from 'react';
 import ParticlesBg from 'particles-bg'
 import Navigation from './components/Navigation/Navigation';
 import Logo from './components/Logo/Logo';
@@ -16,40 +16,16 @@ function App() {
   const [mainWord, setMainWord] = useState('');
   const [route, setRoute] = useState('signIn');
   const [isSignedIn, setIsSignedIn] = useState(false);
-
-  // START CLARIFAI API DEFINITIONS
-  const PAT = '8361ca09d09c44f785c215875d926c2e';
-  const USER_ID = 'mu53zadomkfk';
-  const APP_ID = 'smartbrain';
-  const MODEL_ID = 'general-image-recognition';
-  const MODEL_VERSION_ID = 'aa7f35c01e0642fda5cf400f543e7c40';
-  const IMAGE_URL = input;
-
-  const raw = JSON.stringify({
-      "user_app_id": {
-          "user_id": USER_ID,
-          "app_id": APP_ID
-      },
-      "inputs": [
-          {
-              "data": {
-                  "image": {
-                      "url": IMAGE_URL
-                  }
-              }
-          }
-      ]
-  });
-
-  const requestOptions = {
-      method: 'POST',
-      headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Key ' + PAT
-      },
-      body: raw
-  };
-  // END CLARIFAI API DEFINITIONS
+  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState(
+    {
+      id: '',
+      name: '',
+      email: '',
+      entries: 0,
+      joined: '',
+    }
+  ) ;
 
   // Event to handle typing in the input box.
   const handleInputChange = (e) => {
@@ -61,15 +37,53 @@ function App() {
     setMainWord(data);
   }
 
-  // Event to handle detect button being clicked,
-  const handleClick = (e) => {
+  const handleClick = async (e) => {
     e.preventDefault();
-    setImageUrl(input);
-    fetch("https://api.clarifai.com/v2/models/" + MODEL_ID + "/versions/" + MODEL_VERSION_ID + "/outputs", requestOptions)
-    .then(response => response.json())
-    .then(result => storeWord(result.outputs[0].data.concepts[0].name))
-    .catch(error => console.log('error', error));
-  }
+    if (input !== imageUrl){
+      setImageUrl(input);
+      setIsLoading(true);
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch Clarifai API endpoint
+        const clarifaiResponse = await fetch("http://localhost:8080/imageurl", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl: input })
+        });
+  
+        const { clarifaiConcept } = await clarifaiResponse.json();
+  
+        // Fetch entries endpoint
+        const entriesResponse = await fetch('http://localhost:8080/entries', {
+          method: 'put',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: user.id })
+        });
+  
+        const entriesResult = await entriesResponse.json();
+  
+        // Update user entries
+        const updatedUser = { ...user, entries: entriesResult };
+        setUser(updatedUser);
+  
+        // Store the Clarifai concept
+        storeWord(clarifaiConcept);
+        
+      } catch (error) {
+        console.error('Error in one or both fetches:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    if (imageUrl !== '') {
+      fetchData();
+    }
+  }, [imageUrl]); // Add imageUrl as a dependency to useEffect
 
   // Used to navigate to different destinations with onClicks.
   const handleRouteChange = (route) => {
@@ -86,6 +100,20 @@ function App() {
   const resetStates = () => {
     setImageUrl('');
     setMainWord('');
+  }
+
+  // Loads user information from server response.
+  // Also used in register.js
+  const loadUser = (data) => {
+    setUser(
+      {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        entries: data.entries,
+        joined: data.joined,
+      }
+    )
   }
 
   return (
@@ -105,20 +133,20 @@ function App() {
         route === 'home' 
         ? 
         <>
-          <Rank />
+          <Rank name={user.name} entries={user.entries} />
           <ImageLinkForm 
             onInputChange={handleInputChange}
             onButtonClick={handleClick}
           />
-          <FaceRecognition imageUrl={imageUrl} word={mainWord}/>
+          <FaceRecognition imageUrl={imageUrl} word={mainWord} isLoading={isLoading}/>
         </>
         // Otherwise, either display the Sign In page or the Register Page.
         : (
           route === 'signIn' 
           ?
-          <SignIn onRouteChange={handleRouteChange}/> 
+          <SignIn onRouteChange={handleRouteChange} loadUser={loadUser}/> 
           :
-          <Register onRouteChange={handleRouteChange}/>
+          <Register loadUser={loadUser}onRouteChange={handleRouteChange}/>
         )
       }
     </div>
