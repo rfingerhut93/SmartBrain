@@ -49,7 +49,7 @@ function App() {
     const fetchData = async () => {
       try {
         // Fetch Clarifai API endpoint
-        const clarifaiResponse = await fetch("http://localhost:8080/imageurl", {
+        const clarifaiResponse = await fetch("https://smartbrain-api2-wpzv.onrender.com/imageurl", {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageUrl: input })
@@ -58,7 +58,7 @@ function App() {
         const { clarifaiConcept } = await clarifaiResponse.json();
   
         // Fetch entries endpoint
-        const entriesResponse = await fetch('http://localhost:8080/entries', {
+        const entriesResponse = await fetch('https://smartbrain-api2-wpzv.onrender.com/entries', {
           method: 'put',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: user.id })

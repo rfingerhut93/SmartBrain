@@ -21,7 +21,7 @@ function Register ({onRouteChange, loadUser}) {
     const handleSubmit = (e) => {
         // Prevents form from making a GET request
         e.preventDefault();
-        fetch('http://localhost:8080/register', {
+        fetch('https://smartbrain-api2-wpzv.onrender.com/register', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
